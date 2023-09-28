@@ -7,9 +7,10 @@
 ### Output: a K-correction value
 
 ### Needs to be run: source activate science // streamlit run streamlit_app.py [-- script args]
+### To create the requirements.txt file: python -m  pipreqs.pipreqs . --force
 
 import streamlit as st
-import time, os, glob, io, numpy, sys, matplotlib, pandas
+import os, glob, io, numpy, sys, matplotlib, pandas
 
 from astropy.io import fits
 from astropy import units as u
@@ -212,7 +213,7 @@ def main():
                       0.3500, 0.4000, 0.4500, 0.5000, 0.6000, 0.7000, 0.8000, 0.9000, 1.0000, 1.2500, 1.5000, 1.7500,
                       2.0000, 2.2500, 2.5000, 2.7500, 3.0000, 3.2500, 3.5000, 3.7500, 4.0000, 4.5000, 5.0000, 5.5000, 
                       6.0000, 6.5000, 7.0000, 7.5000, 8.0000, 8.5000, 9.0000, 9.5000, 10.0000, 10.5000, 11.0000, 11.5000, 
-                      12.0000, 12.5000, 13.0000, 13.5000, 14.0000] # gyrs 
+                      12.0000, 12.5000, 13.0000] # gyrs  # , 13.5000, 14.0000
 
     # input path of the SED tables 
     inpath = os.path.join(os.curdir, "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(name_isochrone, name_imf))
@@ -289,7 +290,8 @@ def main():
                                         obs_filter['lambda'], obs_filter['curve'],
                                         rf_filter['lambda'], rf_filter['curve'], dict_choices["redshift"])
 
-        if kcorr < 0: explanation = "**[Interpretation]:** A negative K-correction indicates that the observed flux is brighter than the rest-frame SED, and thus the absolute magnitude should be dimmed."
+        if numpy.isnan(numpy.abs(kcorr)) or numpy.isinf(numpy.abs(kcorr)) or kcorr == -0.0: kcorr = 0; explanation = "This SED and filter combination are misbehaving - check that the spectra is emitting in both wavelength ranges."
+        elif kcorr < 0: explanation = "**[Interpretation]:** A negative K-correction indicates that the observed flux is brighter than the rest-frame SED, and thus the absolute magnitude should be dimmed."
         elif kcorr > 0: explanation = "**[Interpretation]:** A positive K-correction indicates that the observed flux is dimmer than the rest-frame SED, and thus the absolute magnitude should be brighter."
         elif kcorr == 0: explanation = "**[Interpretation]:** A null K-correction indicates that the observed flux is equal to the rest-frame SED."
         else: explanation = "Something went wrong with the K-correction, please try again."
@@ -313,7 +315,7 @@ def main():
             st.dataframe(df, use_container_width = True, column_config = {"_index" : "Parameters", "0" : "Values"})
 
             st.markdown(explanation)
-            st.markdown("**[Image]:** Expected behaviour of the K-correction on the SED of a SSP of {:.2f} Gyr and [M/H] = {:.2f} observed at z = {:.2f}: (left panel) Intrinsic luminosity of the SSP from E-MILES (black) and its redshifted curve (grey) as a function of wavelength, and (right) behaviour of the K-correction. The vertical shaded areas indicate the wavelength range covered by each filter. The correction given by the K value is indicated by the red arrow.".format(dict_choices["age"], dict_choices["mh"], dict_choices["redshift"]))
+            st.markdown("**[Image]:** Expected behaviour of the K-correction on the SED of a SSP of {:.2f} Gyr and [M/H] = {:.2f} observed at z = {:.2f}: (top) Intrinsic luminosity of the SSP from E-MILES (black) and its redshifted curve (grey) as a function of wavelength, and (bottom) behaviour of the K-correction. The vertical shaded areas indicate the wavelength range covered by each filter. The correction given by the K value is indicated by the red arrow.".format(dict_choices["age"], dict_choices["mh"], dict_choices["redshift"]))
 
         with col2:
             # plot the luminosities and K - correction
