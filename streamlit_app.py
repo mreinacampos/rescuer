@@ -3,7 +3,7 @@
 ### Date: September 2023
 
 ### Input: age and metallicity of the SSP, filter names
-### For now: using the E-MILES stellar library of SEDs assuming BaSTi isochrones and Chabrier IMF, and the HST and JWST filter channels
+### For now: using the E-MILES stellar library of SEDs assuming BaSTI isochrones and Chabrier IMF, and the HST and JWST filter channels
 ### Output: a K-correction value
 
 ### Needs to be run: source activate science // streamlit run streamlit_app.py [-- script args]
@@ -270,7 +270,7 @@ def main():
     st.markdown("Written by Marta Reina-Campos and William E. Harris. Based on the manuscript: ")
 
     # create the display
-    st.markdown("This webtool uses the E-MILES stellar library of SEDs assuming the BaSTi models for the stellar isochrones and a Chabrier 2003 IMF.")
+    st.markdown("This webtool uses the E-MILES stellar library of SEDs assuming the BaSTI models for the stellar isochrones and a Chabrier 2003 IMF.")
 
     # check whether the selected age and redshift can be physical
     compatible = check_redshift_age_compatibility(dict_choices["age"], dict_choices["redshift"])
