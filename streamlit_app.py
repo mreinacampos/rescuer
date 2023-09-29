@@ -142,7 +142,7 @@ def plot_luminosities(age, mh, emiles_sed, z, obs_filter, rf_filter):
 
         # add the wavelength range covered by each filter
         ax.axvspan(obs_filter['lambda'].to('micron').value.min(), obs_filter['lambda'].to('micron').value.max(), color = "C0", alpha = 0.1, label = "Observed filter")
-        ax.axvspan(rf_filter['lambda'].to('micron').value.min(), rf_filter['lambda'].to('micron').value.max(), color = "C1", alpha = 0.1, label = "Emitted filter")
+        ax.axvspan(rf_filter['lambda'].to('micron').value.min(), rf_filter['lambda'].to('micron').value.max(), color = "C1", alpha = 0.1, label = "Rest-frame filter")
 
 
     # add the K-correction arrow
@@ -230,6 +230,7 @@ def main():
     # place the selectboxes on the sidebar
     dict_choices = {}
     with st.sidebar:
+
         # select an SED
         dict_choices["age"] = st.selectbox(
                    "Select an age for the SSP [Gyr]",
@@ -266,6 +267,7 @@ def main():
     st.markdown('## RESCUER: Cosmological K-corrections for star clusters')
     #st.divider()
     #st.markdown('### Authors: Marta Reina-Campos and William E. Harris')
+    st.markdown("Written by Marta Reina-Campos and William E. Harris. Based on the manuscript: ")
 
     # create the display
     st.markdown("This webtool uses the E-MILES stellar library of SEDs assuming the BaSTi models for the stellar isochrones and a Chabrier 2003 IMF.")
@@ -322,7 +324,7 @@ def main():
             max_lum, yy_max = plot_luminosities(dict_choices["age"], dict_choices["mh"], emiles_sed, 
                             z = dict_choices["redshift"], obs_filter = obs_filter, rf_filter = rf_filter)
 
-            st.markdown("The SEDs are shown in units of {:.0e} ergs/s/Angstrom/solar masses on the left-hand panel, and in units of {:.0e} Angstrom ergs/s/solar masses on the right-hand panel".format(max_lum, yy_max))
+            st.markdown("The SEDs are shown in units of {:.0e} ergs/s/Angstrom/solar masses on the upper panel, and in units of {:.0e} Angstrom ergs/s/solar masses on the lower panel.".format(max_lum, yy_max))
 
     else:
         max_age = Planck18.age(dict_choices["redshift"]*cu.redshift).to(u.Gyr) - 0.5*u.Gyr
