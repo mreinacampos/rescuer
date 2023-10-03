@@ -235,7 +235,7 @@ def main():
         dict_choices["age"] = st.selectbox(
                    "Select an age for the SSP [Gyr]",
                    ls_models_ages,
-                   index=0,
+                   index=34,
                    placeholder="Select an age...",
                 )
         dict_choices["mh"] = st.selectbox(
@@ -292,19 +292,24 @@ def main():
                                         obs_filter['lambda'], obs_filter['curve'],
                                         rf_filter['lambda'], rf_filter['curve'], dict_choices["redshift"])
 
-        if numpy.isnan(numpy.abs(kcorr)) or numpy.isinf(numpy.abs(kcorr)) or kcorr == -0.0: kcorr = 0; explanation = "This SED and filter combination are misbehaving - check that the spectra is emitting in both wavelength ranges."
+        # based on the value of the K-correction, choose an explanation
+        if numpy.isnan(numpy.abs(kcorr)) or numpy.isinf(numpy.abs(kcorr)): kcorr = "--"; explanation = "**This SED and filter combination are misbehaving - check that the spectra is emitting in both wavelength ranges (i.e. that the SED covers the bandpasses of the filters).**"
+        elif kcorr == -0.0: kcorr = 0; explanation = "**The intrinsic and observed SEDs are equal, make sure to enter a non-null redshift!**"
         elif kcorr < 0: explanation = "**[Interpretation]:** A negative K-correction indicates that the observed flux is brighter than the rest-frame SED, and thus the absolute magnitude should be dimmed."
         elif kcorr > 0: explanation = "**[Interpretation]:** A positive K-correction indicates that the observed flux is dimmer than the rest-frame SED, and thus the absolute magnitude should be brighter."
         elif kcorr == 0: explanation = "**[Interpretation]:** A null K-correction indicates that the observed flux is equal to the rest-frame SED."
         else: explanation = "Something went wrong with the K-correction, please try again."
 
+        # format the label for the K-correction based on the above cases
+        if type(kcorr) == str: label_kcorr = "{:s}".format(kcorr)
+        else: label_kcorr = "{:.5f}".format(kcorr, 5)
 
         dict_table = {'Age [Gyr]': [dict_choices["age"]],
          '[M/H]': [dict_choices["mh"]],
          'Redshift': [dict_choices["redshift"]],
          'Observed filter': [dict_choices["obs_filter"]],
          'Rest-frame filter': [dict_choices["rf_filter"]],
-         'K-correction [AB mags]': [numpy.around(kcorr, 5)]}
+         'K-correction [AB mags]': [label_kcorr]}
 
         df = pandas.DataFrame.from_dict(dict_table, orient = "index")
 
