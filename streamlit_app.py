@@ -176,7 +176,7 @@ def plot_luminosities(age, mh, emiles_sed, z, obs_filter, rf_filter):
         elif i == 1:
             ax.legend(loc = "lower right", frameon = True)
 
-        ax.set_xlim(0, 4)
+        ax.set_xlim(0, None)
         ax.minorticks_on()
         
     # format the entire figure
@@ -199,6 +199,20 @@ def check_redshift_age_compatibility(age, z):
     z_oldest = z_at_value(Planck18.age, age * u.Gyr) 
     if z > z_oldest: return False
     else: return True
+
+def plancks_law(wavelength, T):
+    # wavelength in angstrom and T in K
+    # spectral radiance (the power per unit solid angle and per unit of area normal to the propagation)
+    # density of frequency nu  radiation per unit frequency at thermal equilibrium at temperature T
+    # Units: power / [area × solid angle × frequency] -> power = energy/time.
+    
+    nu = constants.c.to("angstrom s^-1") / wavelength # 1/s = Hz   
+    print(nu, T)
+    spectral_radiance = (2.0 * constants.h.to("erg s") * nu*nu*nu)/(constants.c*constants.c*(numpy.exp(constants.h*nu/(constants.k_B*T)) - 1))
+    
+    # units: (ergs / s) sr^-1 Hz^-1
+    return spectral_radiance.to("erg cm^-2") / u.s / u.Hz / u.sr
+
 
 
 def main():
@@ -230,7 +244,6 @@ def main():
     # place the selectboxes on the sidebar
     dict_choices = {}
     with st.sidebar:
-
         # select an SED
         dict_choices["age"] = st.selectbox(
                    "Select an age for the SSP [Gyr]",
@@ -276,14 +289,30 @@ def main():
     compatible = check_redshift_age_compatibility(dict_choices["age"], dict_choices["redshift"])
 
     if compatible:
-        # load the data
-        emiles_sed = select_emiles_model(age = dict_choices["age"], mh = dict_choices["mh"], name_slope = name_slope, inpath = inpath)
-        # define the standard source - AB magnitudes
-        stdsource = define_standard_source(emiles_sed)
+
         # load the filter data
         obs_filter = load_filter_data(dict_choices["obs_filter"])
         rf_filter = load_filter_data(dict_choices["rf_filter"])
 
+        # load the data
+        emiles_sed = select_emiles_model(age = dict_choices["age"], mh = dict_choices["mh"], name_slope = name_slope, inpath = inpath)
+
+        # if we're using the longest range filters, then overwrite the E-MILES SED and use a blackbody approximation
+        if "F444W" in dict_choices["obs_filter"] or "F444W" in dict_choices["rf_filter"]:
+            st.markdown("**[WARNING]:** One of the selected filters exceeds the wavelength range covered by the E-MILES SEDs. The code is reverting to using a blackbody approximation with $T=5000$K.")
+            # resample the array containing the wavelengths
+            max_wavelength = numpy.max([obs_filter["lambda"].max().value, rf_filter["lambda"].max().value])*rf_filter["lambda"].unit
+            emiles_sed["lambda"] = numpy.linspace(emiles_sed["lambda"].min(), max_wavelength, len(emiles_sed["lambda"]))
+            # determine a blackbody spectrum - units: erg/s/sr/cm^2/Hz
+            blackbody_nu = plancks_law(emiles_sed["lambda"], T = 5000 * u.K)
+            # transforming quantities using nu*flux_nu = flux_lambda*lambda and lambda*nu = c
+            blackbody_lambda = (blackbody_nu * u.Hz)*numpy.power(emiles_sed["lambda"], -2)*constants.c.to("angstrom s^-1") * u.s
+            # units: erg/s/sr/A
+            emiles_sed["lum_angstrom"] = 4*numpy.pi*numpy.power((10 * u.pc).to("cm"), 2)*blackbody_lambda
+
+        # define the standard source - AB magnitudes
+        stdsource = define_standard_source(emiles_sed)
+        
         # calculate the K-correction
         kcorr = func_kcorrection_lambda(emiles_sed["lambda"],
                                         emiles_sed["lum_angstrom"],
