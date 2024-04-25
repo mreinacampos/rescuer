@@ -189,7 +189,7 @@ def plot_luminosities(age, mh, emiles_sed, z, obs_filter, rf_filter):
     st.pyplot(fig)
     #plt.close()
 
-    return max_lum.value, yy_obs.max().value
+    return max_lum, yy_obs.max()
 
 
 # function to check that the selected age and redshift are compatibles
@@ -333,12 +333,21 @@ def main():
         if type(kcorr) == str: label_kcorr = "{:s}".format(kcorr)
         else: label_kcorr = "{:.5f}".format(kcorr, 5)
 
-        dict_table = {'Age [Gyr]': [dict_choices["age"]],
-         '[M/H]': [dict_choices["mh"]],
-         'Redshift': [dict_choices["redshift"]],
-         'Observed filter': [dict_choices["obs_filter"]],
-         'Rest-frame filter': [dict_choices["rf_filter"]],
-         'K-correction [AB mags]': [label_kcorr]}
+        # create the table
+        if "F444W" in dict_choices["obs_filter"] or "F444W" in dict_choices["rf_filter"]:
+            dict_table = {'Age [Gyr]': ["Not applicable - blackbody approximation"],
+            '[M/H]': ["Not applicable - blackbody approximation"],
+            'Redshift': [dict_choices["redshift"]],
+            'Observed filter': [dict_choices["obs_filter"]],
+            'Rest-frame filter': [dict_choices["rf_filter"]],
+            'K-correction [AB mags]': [label_kcorr]}
+        else:
+            dict_table = {'Age [Gyr]': [dict_choices["age"]],
+            '[M/H]': [dict_choices["mh"]],
+            'Redshift': [dict_choices["redshift"]],
+            'Observed filter': [dict_choices["obs_filter"]],
+            'Rest-frame filter': [dict_choices["rf_filter"]],
+            'K-correction [AB mags]': [label_kcorr]}
 
         df = pandas.DataFrame.from_dict(dict_table, orient = "index")
 
@@ -358,7 +367,7 @@ def main():
             max_lum, yy_max = plot_luminosities(dict_choices["age"], dict_choices["mh"], emiles_sed, 
                             z = dict_choices["redshift"], obs_filter = obs_filter, rf_filter = rf_filter)
 
-            st.markdown("The SEDs are shown in units of {:.0e} ergs/s/Angstrom/solar masses on the upper panel, and in units of {:.0e} Angstrom ergs/s/solar masses on the lower panel.".format(max_lum, yy_max))
+            st.markdown("The SEDs are shown in units of {:.0e} on the upper panel, and in units of {:.0e} on the lower panel.".format(max_lum, yy_max))
 
     else:
         max_age = Planck18.age(dict_choices["redshift"]*cu.redshift).to(u.Gyr) - 0.5*u.Gyr
