@@ -109,7 +109,7 @@ def load_filter_data(name_filter):
     return data_filter  
 
 # function to show the mulinosity of the chosen SSP
-def plot_luminosities(age, mh, emiles_sed, z, obs_filter, rf_filter):
+def plot_luminosities(age, mh, emiles_sed, z, obs_filter, rf_filter, doing_bb = False):
     matplotlib.use('agg')  # required, use a non-interactive backend
 
     fig, axs = plt.subplots(2, figsize = (12,12.5), sharex = True, sharey = True, squeeze = False)
@@ -160,7 +160,11 @@ def plot_luminosities(age, mh, emiles_sed, z, obs_filter, rf_filter):
                        arrowprops=dict(color='C3', lw = 3, arrowstyle = "->"), zorder = 10)
     
     # annotate the SSP used
-    axs[0].annotate(r"SSP of {:.2f} Gyr and [M/H] = {:.2f}".format(age, mh),
+    if doing_bb:
+        axs[0].annotate(r"Blackbody curve of $T=5000~\rm K$",
+                xy = (0.98, 0.97), xycoords = "axes fraction", va = "top", ha = "right")
+    else:
+        axs[0].annotate(r"SSP of {:.2f} Gyr and [M/H] = {:.2f}".format(age, mh),
                 xy = (0.98, 0.97), xycoords = "axes fraction", va = "top", ha = "right")
 
     # format all axes
@@ -174,7 +178,7 @@ def plot_luminosities(age, mh, emiles_sed, z, obs_filter, rf_filter):
         if i == 0:
             ax.legend(loc = "center right", frameon = True)
         elif i == 1:
-            ax.legend(loc = "lower right", frameon = True)
+            ax.legend(loc = "upper right", frameon = True)
 
         ax.set_xlim(0, None)
         ax.minorticks_on()
@@ -296,9 +300,11 @@ def main():
 
         # load the data
         emiles_sed = select_emiles_model(age = dict_choices["age"], mh = dict_choices["mh"], name_slope = name_slope, inpath = inpath)
+        doing_blackbody = False
 
         # if we're using the longest range filters, then overwrite the E-MILES SED and use a blackbody approximation
         if "F444W" in dict_choices["obs_filter"] or "F444W" in dict_choices["rf_filter"]:
+            doing_blackbody = True
             st.markdown("**[WARNING]:** One of the selected filters exceeds the wavelength range covered by the E-MILES SEDs. The code is reverting to using a blackbody approximation with $T=5000$K.")
             # resample the array containing the wavelengths
             max_wavelength = numpy.max([obs_filter["lambda"].max().value, rf_filter["lambda"].max().value])*rf_filter["lambda"].unit
@@ -334,7 +340,7 @@ def main():
         else: label_kcorr = "{:.5f}".format(kcorr, 5)
 
         # create the table
-        if "F444W" in dict_choices["obs_filter"] or "F444W" in dict_choices["rf_filter"]:
+        if doing_blackbody:
             dict_table = {'Age [Gyr]': ["Not applicable - blackbody approximation"],
             '[M/H]': ["Not applicable - blackbody approximation"],
             'Redshift': [dict_choices["redshift"]],
@@ -365,7 +371,7 @@ def main():
         with col2:
             # plot the luminosities and K - correction
             max_lum, yy_max = plot_luminosities(dict_choices["age"], dict_choices["mh"], emiles_sed, 
-                            z = dict_choices["redshift"], obs_filter = obs_filter, rf_filter = rf_filter)
+                            z = dict_choices["redshift"], obs_filter = obs_filter, rf_filter = rf_filter, doing_bb = doing_blackbody)
 
             st.markdown("The SEDs are shown in units of {:.0e} on the upper panel, and in units of {:.0e} on the lower panel.".format(max_lum, yy_max))
 
