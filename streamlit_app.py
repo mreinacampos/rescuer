@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 from astropy.cosmology import Planck18, z_at_value
 import astropy.cosmology.units as cu
 from functions_Kcorrection import *
+from scipy.interpolate import interp1d
 
 matplotlib.rcParams['text.usetex'] = False
 matplotlib.rcParams['font.size'] = 18.0
@@ -305,12 +306,20 @@ def main():
         # if we're using the longest range filters, then overwrite the E-MILES SED and use a blackbody approximation
         if "F444W" in dict_choices["obs_filter"] or "F444W" in dict_choices["rf_filter"]:
             doing_blackbody = True
-            st.markdown("**[WARNING]:** One of the selected filters exceeds the wavelength range covered by the E-MILES SEDs. The code is reverting to using a blackbody approximation with $T=5000$K.")
+            
+            # interpolate the E-MILES SED to get the peak wavelength
+            interpolated = interp1d(emiles_sed["lambda"], emiles_sed["lum_angstrom"], axis = 0, fill_value = 'extrapolate')
+            down_lambda = numpy.linspace(emiles_sed["lambda"].min(), emiles_sed["lambda"].max(), int(len(emiles_sed["lambda"])/2))
+            downsampled = interpolated(down_lambda)
+            peak_lambda = down_lambda[ downsampled == downsampled.max()][0]
+            # applying Wien's law to get the temperature
+            T = ( 2898 * u.micron * u.K ).to(u.AA * u.K) / peak_lambda
+            st.markdown("**[WARNING]:** One of the selected filters exceeds the wavelength range covered by the E-MILES SEDs. The code is reverting to using a blackbody approximation with $T={:.1f}$.".format(T))
             # resample the array containing the wavelengths
             max_wavelength = numpy.max([obs_filter["lambda"].max().value, rf_filter["lambda"].max().value])*rf_filter["lambda"].unit
             emiles_sed["lambda"] = numpy.linspace(emiles_sed["lambda"].min(), max_wavelength, len(emiles_sed["lambda"]))
             # determine a blackbody spectrum - units: erg/s/sr/cm^2/Hz
-            blackbody_nu = plancks_law(emiles_sed["lambda"], T = 5000 * u.K)
+            blackbody_nu = plancks_law(emiles_sed["lambda"], T = T)
             # transforming quantities using nu*flux_nu = flux_lambda*lambda and lambda*nu = c
             blackbody_lambda = (blackbody_nu * u.Hz)*numpy.power(emiles_sed["lambda"], -2)*constants.c.to("angstrom s^-1") * u.s
             # units: erg/s/sr/A
