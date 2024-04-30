@@ -162,7 +162,7 @@ def plot_luminosities(age, mh, emiles_sed, z, obs_filter, rf_filter, doing_bb = 
     
     # annotate the SSP used
     if doing_bb:
-        axs[0].annotate(r"Blackbody curve of $T=5000~\rm K$",
+        axs[0].annotate(r"Blackbody curve of $T={:.1f}~\rm K$".format(doing_bb),
                 xy = (0.98, 0.97), xycoords = "axes fraction", va = "top", ha = "right")
     else:
         axs[0].annotate(r"SSP of {:.2f} Gyr and [M/H] = {:.2f}".format(age, mh),
@@ -301,11 +301,10 @@ def main():
 
         # load the data
         emiles_sed = select_emiles_model(age = dict_choices["age"], mh = dict_choices["mh"], name_slope = name_slope, inpath = inpath)
-        doing_blackbody = False
+        doing_blackbody = 0
 
         # if we're using the longest range filters, then overwrite the E-MILES SED and use a blackbody approximation
         if "F444W" in dict_choices["obs_filter"] or "F444W" in dict_choices["rf_filter"]:
-            doing_blackbody = True
             
             # interpolate the E-MILES SED to get the peak wavelength
             interpolated = interp1d(emiles_sed["lambda"], emiles_sed["lum_angstrom"], axis = 0, fill_value = 'extrapolate')
@@ -314,7 +313,9 @@ def main():
             peak_lambda = down_lambda[ downsampled == downsampled.max()][0]
             # applying Wien's law to get the temperature
             T = ( 2898 * u.micron * u.K ).to(u.AA * u.K) / peak_lambda
-            st.markdown("**[WARNING]:** One of the selected filters exceeds the wavelength range covered by the E-MILES SEDs. The code is reverting to using a blackbody approximation with $T={:.1f}$.".format(T))
+            doing_blackbody = T.value
+            
+            st.markdown("**[WARNING]:** One of the selected filters exceeds the wavelength range covered by the E-MILES SEDs. The code is mimicking the chosen SED with a blackbody approximation of $T={:.1f}$ so it peaks at the same wavelength.".format(T))
             # resample the array containing the wavelengths
             max_wavelength = numpy.max([obs_filter["lambda"].max().value, rf_filter["lambda"].max().value])*rf_filter["lambda"].unit
             emiles_sed["lambda"] = numpy.linspace(emiles_sed["lambda"].min(), max_wavelength, len(emiles_sed["lambda"]))
@@ -350,8 +351,8 @@ def main():
 
         # create the table
         if doing_blackbody:
-            dict_table = {'Age [Gyr]': ["Not applicable - blackbody approximation"],
-            '[M/H]': ["Not applicable - blackbody approximation"],
+            dict_table = {'Age [Gyr]': ["Mimicking {:.1f} with a blackbody approximation".format(dict_choices["age"])],
+            '[M/H]': ["Mimicking {:.1f} with a blackbody approximation".format(dict_choices["mh"])],
             'Redshift': [dict_choices["redshift"]],
             'Observed filter': [dict_choices["obs_filter"]],
             'Rest-frame filter': [dict_choices["rf_filter"]],
