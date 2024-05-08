@@ -39,7 +39,7 @@ st.set_page_config(
 )
 
 # function to select and load the required E-MILES model
-def select_emiles_model(age, mh, name_slope, inpath):
+def select_emiles_model(age, mh, name_slope, name_label, inpath):
 
     # format the name
     if mh < 0: sign_mh = "m"
@@ -49,7 +49,7 @@ def select_emiles_model(age, mh, name_slope, inpath):
         
     try:
         # load the FITS table
-        fname_table = os.path.join(inpath, '{:s}{:s}{:s}_iTp0.00_baseFe.fits'.format(name_slope, name_mh, name_age))
+        fname_table = os.path.join(inpath, '{:s}{:s}{:s}_{:s}0.00_baseFe.fits'.format(name_slope, name_mh, name_age, name_label))
         key = "{:s}{:s}{:s}".format(name_slope, name_mh, name_age)
         hdul = fits.open(fname_table)
     except:
@@ -223,20 +223,29 @@ def plancks_law(wavelength, T):
 def main():
     ### PREPARE variables
     # define variables describing the E-MILES models
-    name_isochrone = "BASTI" # "PADOVA00"
+    #name_isochrone = "BASTI" # "PADOVA00"
     name_imf = "CH" # Chabrier 2003
     name_slope = "Ech1.30" # slope of the IMF
 
-    ls_models_mh = [-2.27, -1.79, -1.49, -1.26, -0.96, -0.66, -0.35, -0.25, 0.06, 0.15, 0.26, 0.4]
-    ls_models_ages = [0.0300, 0.0400, 0.0500, 0.0600, 0.0700, 0.0800, 0.0900, 0.1000, 0.1500, 0.2000, 0.2500, 0.3000, 
-                      0.3500, 0.4000, 0.4500, 0.5000, 0.6000, 0.7000, 0.8000, 0.9000, 1.0000, 1.2500, 1.5000, 1.7500,
-                      2.0000, 2.2500, 2.5000, 2.7500, 3.0000, 3.2500, 3.5000, 3.7500, 4.0000, 4.5000, 5.0000, 5.5000, 
-                      6.0000, 6.5000, 7.0000, 7.5000, 8.0000, 8.5000, 9.0000, 9.5000, 10.0000, 10.5000, 11.0000, 11.5000, 
-                      12.0000, 12.5000, 13.0000] # gyrs  # , 13.5000, 14.0000
-
-    # input path of the SED tables 
-    inpath = os.path.join(os.curdir, "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(name_isochrone, name_imf))
-    ls_files = glob.glob(os.path.join(inpath,"*.fits"))
+    dict_options = {"BASTI": {
+                        "name_label" : "iTp",
+                        "ls_models_mh" : [-2.27, -1.79, -1.49, -1.26, -0.96, -0.66, -0.35, -0.25, 0.06, 0.15, 0.26, 0.4],
+                        "ls_models_ages" : [0.0300, 0.0400, 0.0500, 0.0600, 0.0700, 0.0800, 0.0900, 0.1000, 0.1500, 0.2000, 0.2500, 0.3000, 
+                        0.3500, 0.4000, 0.4500, 0.5000, 0.6000, 0.7000, 0.8000, 0.9000, 1.0000, 1.2500, 1.5000, 1.7500,
+                        2.0000, 2.2500, 2.5000, 2.7500, 3.0000, 3.2500, 3.5000, 3.7500, 4.0000, 4.5000, 5.0000, 5.5000, 
+                        6.0000, 6.5000, 7.0000, 7.5000, 8.0000, 8.5000, 9.0000, 9.5000, 10.0000, 10.5000, 11.0000, 11.5000, 
+                        12.0000, 12.5000, 13.0000] # gyrs
+                        },
+                    "PADOVA00": {
+                        "name_label" : "iPp",
+                        "ls_models_mh" : [-2.32, -1.71, -1.31, -0.71, -0.40, 0.00, 0.22],
+                        "ls_models_ages" : [0.0631, 0.0708, 0.0794, 0.0891, 0.1000, 0.1122, 0.1259, 0.1413, 0.1585, 0.1778, 0.1995, 0.2239, 
+                        0.2512, 0.2818, 0.3162, 0.3548, 0.3981, 0.4467, 0.5012, 0.5623, 0.6310, 0.7079, 0.7943, 0.8913, 1.0000, 1.1220,
+                        1.2589, 1.4125, 1.5849, 1.7783, 1.9953, 2.2387, 2.5119, 2.8184, 3.1623, 3.5481, 3.9811, 4.4668, 5.0119, 5.6234,
+                            6.3096, 7.0795, 7.9433, 8.9125, 10.0000, 11.2202, 12.5893] # gyrs} 
+                        }}
+    #ls_models_isochrone = ["BASTI", "PADOVA00"]
+    
 
     ### load the available filters
     ls_files_filters = glob.glob(os.path.join(".", "Filters", "*.dat"))
@@ -249,16 +258,22 @@ def main():
     # place the selectboxes on the sidebar
     dict_choices = {}
     with st.sidebar:
+        dict_choices["isochrone_model"] = st.selectbox(
+                   "Select an isochrone model",
+                   dict_options.keys(),
+                   index=0,
+                   placeholder="Select an isochrone model...",
+                )
         # select an SED
         dict_choices["age"] = st.selectbox(
                    "Select an age for the SSP [Gyr]",
-                   ls_models_ages,
+                   dict_options[dict_choices["isochrone_model"]]["ls_models_ages"],
                    index=34,
                    placeholder="Select an age...",
                 )
         dict_choices["mh"] = st.selectbox(
                    "Select a metallicity for the SSP in [M/H]",
-                   ls_models_mh,
+                   dict_options[dict_choices["isochrone_model"]]["ls_models_mh"],
                    index=0,
                    placeholder="Select an age...",
                 )
@@ -288,7 +303,7 @@ def main():
     st.markdown("Written by Marta Reina-Campos and William E. Harris. Based on the manuscript: ")
 
     # create the display
-    st.markdown("This webtool uses the E-MILES stellar library of SEDs assuming the BaSTI models for the stellar isochrones and a Chabrier 2003 IMF.")
+    st.markdown("This webtool uses the E-MILES stellar library of SEDs assuming the {:s} models for the stellar isochrones and a Chabrier 2003 IMF.".format(dict_choices["isochrone_model"]))
 
     # check whether the selected age and redshift can be physical
     compatible = check_redshift_age_compatibility(dict_choices["age"], dict_choices["redshift"])
@@ -300,7 +315,11 @@ def main():
         rf_filter = load_filter_data(dict_choices["rf_filter"])
 
         # load the data
-        emiles_sed = select_emiles_model(age = dict_choices["age"], mh = dict_choices["mh"], name_slope = name_slope, inpath = inpath)
+        inpath = os.path.join(os.curdir, "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf))
+        emiles_sed = select_emiles_model(age = dict_choices["age"], mh = dict_choices["mh"],
+                                         name_slope = name_slope, 
+                                         name_label = dict_options[dict_choices["isochrone_model"]]["name_label"],
+                                         inpath = inpath)
         doing_blackbody = 0
 
         # if we're using the longest range filters, then overwrite the E-MILES SED and use a blackbody approximation
