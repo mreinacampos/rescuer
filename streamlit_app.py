@@ -244,9 +244,7 @@ def main():
                         1.2589, 1.4125, 1.5849, 1.7783, 1.9953, 2.2387, 2.5119, 2.8184, 3.1623, 3.5481, 3.9811, 4.4668, 5.0119, 5.6234,
                             6.3096, 7.0795, 7.9433, 8.9125, 10.0000, 11.2202, 12.5893] # gyrs} 
                         }}
-    #ls_models_isochrone = ["BASTI", "PADOVA00"]
     
-
     ### load the available filters
     ls_files_filters = glob.glob(os.path.join(".", "Filters", "*.dat"))
     ls_filters = []
