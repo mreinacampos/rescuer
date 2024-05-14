@@ -131,12 +131,11 @@ def plot_luminosities(age, mh, emiles_sed, z, obs_filter, rf_filter, target_sed,
                     color = "k"; lw = 1; ls = "-"; alpha = 1; label = "Intrinsic luminosity"
                     # add the redhsifted SED only for the target SED
                     ax.plot(emiles_sed[key]["lambda"].to("micron")*(1+z), emiles_sed[key]["lum_angstrom"]/max_lum/(1+z),
-                        ls = ls, alpha = 0.5, c = "C3", lw = lw, label = "Observed at z={:.1f}".format(z))
-                else: 
-                    color = "k" ; lw = 1; ls = ":"; alpha = 0.1; label = ""
-
-                ax.plot(emiles_sed[key]["lambda"].to("micron"), emiles_sed[key]["lum_angstrom"]/max_lum,
+                        ls = ls, alpha = 0.3, c = "k", lw = lw, label = "Observed at z={:.1f}".format(z))
+                    ax.plot(emiles_sed[key]["lambda"].to("micron"), emiles_sed[key]["lum_angstrom"]/max_lum,
                         color = color, lw = lw, ls = ls, alpha = alpha, label = label)
+                #else: 
+                #    color = "k" ; lw = 1; ls = ":"; alpha = 0.1; label = ""
 
         elif i == 1:
             # approximation to the integrals if the filters are deltas
@@ -350,7 +349,7 @@ def main():
     # create the display
     st.markdown("This webtool uses the [E-MILES stellar library of SEDs](http://research.iac.es/proyecto/miles/pages/spectral-energy-distributions-seds/e-miles.php) assuming the {:s} models for the stellar isochrones and a Chabrier 2003 IMF.".format(dict_choices["isochrone_model"]))
     if dict_choices["add_uncertainties"]:
-        st.markdown("The uncertainties in the K-correction are calculated using all the models contained within given user-defined uncertainties in age and metallicity, and they are defined as the dispersion to the 10th - 90th percentiles.")
+        st.markdown("The bounds in the K-correction are calculated using all the models contained within given user-defined uncertainties in age and metallicity, and they are given by the 10th - 90th percentiles of the K-corrections of these models.")
 
     # check whether the selected age and redshift can be physical
     compatible = check_redshift_age_compatibility(dict_choices["age"], dict_choices["redshift"])
@@ -438,7 +437,7 @@ def main():
                 # calculate the uncertainties as the distances to the 10th-90th percentiles
                 per10th = numpy.min([numpy.percentile(ls_kcorr, 10), target_kcorr])
                 per90th = numpy.max([numpy.percentile(ls_kcorr, 90), target_kcorr])
-                dict_choices["sigma_kcorr"] = [target_kcorr - per10th, per90th - target_kcorr]
+                dict_choices["sigma_kcorr"] = [per10th, per90th]
             
         # based on the value of the K-correction, choose an explanation
         if numpy.isnan(numpy.abs(target_kcorr)) or numpy.isinf(numpy.abs(target_kcorr)): target_kcorr = "--"; explanation = "**This SED and filter combination are misbehaving - check that the spectra is emitting in both wavelength ranges (i.e. that the SED covers the bandpasses of the filters).**"
@@ -452,11 +451,11 @@ def main():
         if type(target_kcorr) == str: 
             label_kcorr = "{:s}".format(target_kcorr)
             if dict_choices["add_uncertainties"]:
-                label_uncertainties = "- {:s} / + {:s}".format(*dict_choices["sigma_kcorr"])
+                label_uncertainties = "[lower] {:s} / [upper] {:s}".format(*dict_choices["sigma_kcorr"])
         else: 
             label_kcorr = "{:.5f}".format(target_kcorr, 5)
             if dict_choices["add_uncertainties"]:
-                label_uncertainties = "- {:.5f} / + {:.5f}".format(*dict_choices["sigma_kcorr"])
+                label_uncertainties = "[lower] {:.5f} / [upper] {:.5f}".format(*dict_choices["sigma_kcorr"])
 
         # create the table
         if doing_blackbody:
@@ -467,7 +466,7 @@ def main():
             'Rest-frame filter': [dict_choices["rf_filter"]],
             'K-correction [AB mags]': [label_kcorr]}
             if dict_choices["add_uncertainties"]:
-                dict_table['Uncertainty in the K-correction [AB mags]'] = [label_uncertainties]
+                dict_table['Bounds in the K-correction [AB mags]'] = [label_uncertainties]
 
         else:
             dict_table = {'Age [Gyr]': [dict_choices["age"]],
@@ -477,7 +476,7 @@ def main():
             'Rest-frame filter': [dict_choices["rf_filter"]],
             'K-correction [AB mags]': [label_kcorr]}
             if dict_choices["add_uncertainties"]:
-                dict_table['Uncertainty in the K-correction [AB mags]'] = [label_uncertainties]
+                dict_table['Bounds in the K-correction [AB mags]'] = [label_uncertainties]
 
         df = pandas.DataFrame.from_dict(dict_table, orient = "index")
 
@@ -489,11 +488,12 @@ def main():
             #st.table(dict_table)
             st.dataframe(df, use_container_width = True, column_config = {"_index" : "Parameters", "0" : "Values"})
 
-            if dict_choices["add_uncertainties"]:
-                st.markdown("**[Explanation]:** The uncertainties in age and metallicity are {:.2f} Gyr and {:.2f} dex, respectively (they need to be readjusted to the spacing of the grid of models). The K-correction has an uncertainty of - {:.5f} / + {:.5f} AB mags.".format(dict_choices["sigma_age"]*dict_choices["age"]/100, dict_choices["sigma_mh"], *dict_choices["sigma_kcorr"]))
+            #if dict_choices["add_uncertainties"]:
+            #    st.markdown("**[Explanation]:** The uncertainties in age and metallicity are {:.2f} Gyr and {:.2f} dex, respectively (they need to be readjusted to the spacing of the grid of models). The K-correction has an uncertainty of - {:.5f} / + {:.5f} AB mags.".format(dict_choices["sigma_age"]*dict_choices["age"]/100, dict_choices["sigma_mh"], *dict_choices["sigma_kcorr"]))
 
             st.markdown(explanation)
-            st.markdown("**[Image]:** Expected behaviour of the K-correction on the SED of a SSP of {:.2f} Gyr and [M/H] = {:.2f} observed at z = {:.2f}: (top) Intrinsic luminosity of the SSP from E-MILES (black) and its redshifted curve (red) as a function of wavelength, with grey lines showing the SEDs of the models used to calculate the uncertainty in the K-correction, and (bottom) behaviour of the K-correction. The vertical shaded areas indicate the wavelength range covered by each filter. The correction given by the K value is indicated by the red arrow.".format(dict_choices["age"], dict_choices["mh"], dict_choices["redshift"]))
+            # , with (grey) lines showing the SEDs of the models used to calculate the uncertainty in the K-correction
+            st.markdown("**[Image]:** Expected behaviour of the K-correction on the SED of a SSP of {:.2f} Gyr and [M/H] = {:.2f} observed at z = {:.2f}: (top) Intrinsic luminosity of the SSP from E-MILES (black) and its redshifted curve (grey) as a function of wavelength, and (bottom) behaviour of the K-correction. The vertical shaded areas indicate the wavelength range covered by each filter. The correction given by the K value is indicated by the red arrow.".format(dict_choices["age"], dict_choices["mh"], dict_choices["redshift"]))
 
         with col2:
             # plot the luminosities and K - correction
