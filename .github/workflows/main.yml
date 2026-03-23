@@ -17,6 +17,10 @@ jobs:
               with:
                   python-version: '3.13'
 
+            - name: 📦 Install dependencies
+              run: |
+                  pip install marimo astropy matplotlib numpy pandas scipy
+
             - name:  Export notebook
               run: |
                   marimo export html-wasm script_marimo.py -o docs/index.html --mode run --sandbox
@@ -24,7 +28,7 @@ jobs:
             - name: 📦 Upload Pages Artifact
               uses: actions/upload-pages-artifact@v3
               with:
-                  path: docs/index.html
+                  path: docs
 
     deploy:
         needs: build
