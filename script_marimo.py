@@ -165,12 +165,14 @@ def _(
             if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
                 # Fetch the raw Python file from GitHub
                 filter_list_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/filter_list.txt"
+                _base_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/"
             else:  # Local testing, use local file
                 filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
-
+                _base_url = mo.notebook_location()
+                
             text = requests.get(filter_list_url).text
             filter_files = [line.strip() for line in text.splitlines() if line.strip()]
-            ls_files_filters = [urljoin(str(base_url), f"public/Filters/{name}") for name in filter_files]
+            ls_files_filters = [urljoin(str(_base_url), f"public/Filters/{name}") for name in filter_files]
 
         else:
             ls_files_filters = glob.glob(os.path.join(".", "public", "Filters", "*.dat"))
@@ -375,12 +377,14 @@ def _(base_url, glob, mo, numpy, os, requests, sys, urljoin):
         if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
             # Fetch the raw Python file from GitHub
             filter_list_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/filter_list.txt"
+            _base_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/"
         else:  # Local testing, use local file
             filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
-
+            _base_url = mo.notebook_location()
+            
         text = requests.get(filter_list_url).text
         filter_files = [line.strip() for line in text.splitlines() if line.strip()]
-        _ls_filters = [urljoin(str(base_url), f"public/{name}") for name in filter_files]
+        _ls_filters = [urljoin(str(_base_url), f"public/{name}") for name in filter_files]
 
     else:
         _ls_filters = glob.glob(os.path.join(".", "public", "Filters", "*.dat"))
