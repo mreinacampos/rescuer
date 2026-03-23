@@ -19,7 +19,7 @@ jobs:
 
             - name: 📦 Install dependencies
               run: |
-                  pip install marimo astropy matplotlib numpy pandas scipy
+                  pip install uv marimo astropy matplotlib numpy pandas scipy
 
             - name:  Export notebook
               run: |
