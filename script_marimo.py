@@ -12,7 +12,7 @@
 
 import marimo
 
-__generated_with = "0.21.0"
+__generated_with = "0.21.1"
 app = marimo.App(width="full")
 
 
@@ -40,20 +40,32 @@ def _():
     from astropy.cosmology import Planck18, z_at_value
     import astropy.cosmology.units as cu
     from scipy.interpolate import interp1d
-    from pathlib import Path
 
-    path_to_public = mo.notebook_location() / "public"
-    sys.path.insert(0, "path_to_public")
-    #from functions_Kcorrection import func_kcorrection_lambda
+    #base_url = mo.notebook_location()
+    #csv_url = urljoin(base_url, "../public/example_table.csv")  # adjust relative path
+    #df = pd.read_csv(csv_url)
+
+    from urllib.parse import urljoin
+    import requests
+
+    if "pyodide" in sys.modules: # WebAssembly
+        base_url = mo.notebook_location()
+        code = requests.get(urljoin(str(base_url), "public/functions_Kcorrection.py")).text
+        exec(code, globals())
+    else: # locally
+        sys.path.append(os.path.join(".", "public"))
+        from functions_Kcorrection import func_kcorrection_lambda
 
     matplotlib.rcParams['text.usetex'] = False
     matplotlib.rcParams['font.size'] = 18.0
     matplotlib.rcParams['legend.fontsize'] = 16.0
     return (
         Planck18,
+        base_url,
         constants,
         cu,
         fits,
+        func_kcorrection_lambda,
         glob,
         interp1d,
         io,
@@ -63,13 +75,30 @@ def _():
         os,
         pandas,
         plt,
+        requests,
+        sys,
         u,
+        urljoin,
         z_at_value,
     )
 
 
 @app.cell
-def _(Planck18, constants, fits, glob, mo, numpy, os, u, z_at_value):
+def _(
+    Planck18,
+    base_url,
+    constants,
+    fits,
+    glob,
+    mo,
+    numpy,
+    os,
+    requests,
+    sys,
+    u,
+    urljoin,
+    z_at_value,
+):
     def select_emiles_model(age, mh, name_slope, name_label, inpath):
         # format the name
         if mh < 0:
@@ -84,27 +113,31 @@ def _(Planck18, constants, fits, glob, mo, numpy, os, u, z_at_value):
                                                                                       name_age, 
                                                                                       name_label))
         try:
-            hdul = fits.open(fname_table)
+            if "pyodide" in sys.modules:
+                response = requests.get(fname_table)
+                hdul = fits.open(io.BytesIO(response.content))
+            else:
+                hdul = fits.open(fname_table)
+            sed = {}
+            # wavelength range for the E-MILES models - Å
+            sed["lambda"] = numpy.linspace(1680.2, 49999.4, len(hdul[0].data)) * u.angstrom
+            # transform to frequencies
+            sed["nu"] = sed["lambda"].to(u.Hz, equivalencies=u.spectral())
+            ### LUMINOSITY
+            # SSP spectra is output in Lλ/ LSun MSun^-1 Å^-1 units
+            sed["lum_angstrom"] = hdul[0].data * u.solLum / u.angstrom / u.solMass
+            # convert to erg/s/MSun/A
+            sed["lum_angstrom"] = sed["lum_angstrom"].to(u.erg / u.s / u.angstrom / u.solMass)
+
+            # transform to Hz^-1 -> f_nu = f_lambda*lambda/(nu = c/lambda)
+            convert_to_hz = numpy.power(sed["lambda"], 2) / constants.c.to("angstrom s^-1")
+            sed["lum_hz"] = sed["lum_angstrom"] * convert_to_hz / u.s / u.Hz
+            hdul.close()
+            return sed
         except: 
             mo.md("{:s} could NOT be found".format(fname_table))
+            return None
 
-        sed = {}
-        # wavelength range for the E-MILES models - Å
-        sed["lambda"] = numpy.linspace(1680.2, 49999.4, len(hdul[0].data)) * u.angstrom
-        # transform to frequencies
-        sed["nu"] = sed["lambda"].to(u.Hz, equivalencies=u.spectral())
-        ### LUMINOSITY
-        # SSP spectra is output in Lλ/ LSun MSun^-1 Å^-1 units
-        sed["lum_angstrom"] = hdul[0].data * u.solLum / u.angstrom / u.solMass
-        # convert to erg/s/MSun/A
-        sed["lum_angstrom"] = sed["lum_angstrom"].to(u.erg / u.s / u.angstrom / u.solMass)
-
-        # transform to Hz^-1 -> f_nu = f_lambda*lambda/(nu = c/lambda)
-        convert_to_hz = numpy.power(sed["lambda"], 2) / constants.c.to("angstrom s^-1")
-        sed["lum_hz"] = sed["lum_angstrom"] * convert_to_hz / u.s / u.Hz
-        hdul.close()
-
-        return sed
 
     # define the dictionary holding the AB standard source information
     def define_standard_source(sed):
@@ -124,8 +157,17 @@ def _(Planck18, constants, fits, glob, mo, numpy, os, u, z_at_value):
     # function to load the files with the filter throughputs
     def load_filter_data(name_filter):
         # load the name of all the files
-        ls_files_filters = glob.glob(os.path.join(".", "Filters", "*.dat"))
+        ### load the available filters
+        if "pyodide" in sys.modules: # WebAssembly
+            filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
+            text = requests.get(filter_list_url).text
+            filter_files = [line.strip() for line in text.splitlines() if line.strip()]
+            ls_files_filters = [urljoin(str(base_url), f"public/Filters/{name}") for name in filter_files]
 
+        else:
+            ls_files_filters = glob.glob(os.path.join(".", "public", "Filters", "*.dat"))
+            ls_files_filters.sort()
+    
         # output the data in a dictionary
         data_filter = {}
         # keep only the FXYZW
@@ -133,7 +175,11 @@ def _(Planck18, constants, fits, glob, mo, numpy, os, u, z_at_value):
         # find the file
         for name in ls_files_filters:
             if range_filter == name.split(".")[-2]:
-                tmp = numpy.genfromtxt(name, comments = "#")
+                if "pyodide" in sys.modules:
+                    response = requests.get(name)
+                    tmp = numpy.genfromtxt(io.StringIO(response.text), comments="#")
+                else:
+                    tmp = numpy.genfromtxt(name, comments="#")
                 data_filter["lambda"] = tmp[:,0] * u.angstrom # Angstrom
                 data_filter["nu"] = data_filter["lambda"].to(u.Hz, equivalencies=u.spectral()) # Hz
                 data_filter["curve"] = tmp[:,1] # unitless
@@ -297,7 +343,7 @@ def _(matplotlib, numpy, plt):
 
 
 @app.cell
-def _(glob, numpy, os):
+def _(base_url, glob, mo, numpy, os, requests, sys, urljoin):
     ### PREPARE variables
     # define variables describing the E-MILES models
     #name_isochrone = "BASTI" # "PADOVA00"
@@ -317,7 +363,15 @@ def _(glob, numpy, os):
         }
     }
     ### load the available filters
-    _ls_filters = glob.glob(os.path.join(".", "Filters", "*.dat"))
+    if "pyodide" in sys.modules: # WebAssembly
+        filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
+        text = requests.get(filter_list_url).text
+        filter_files = [line.strip() for line in text.splitlines() if line.strip()]
+        _ls_filters = [urljoin(str(base_url), f"public/{name}") for name in filter_files]
+
+    else:
+        _ls_filters = glob.glob(os.path.join(".", "public", "Filters", "*.dat"))
+
     ls_filters = sorted(["_".join(f.split("/")[-1].split(".")[:-1]) for f in _ls_filters])
     ls_filters.sort()
     return dict_options, ls_filters, name_imf, name_slope
@@ -469,7 +523,7 @@ def _(dr_file_area, dr_file_button, io, pandas, pd):
 @app.cell
 def _(dict_choices, dr_file_area, dr_file_button, ls_filters, mo):
     # is the app in its original state? Check if the dropdowns are still in their default value
-    original = (dict_choices["isochrone_model"] == "BASTI")&(dict_choices["age"] == 10.0)&(dict_choices["mh"] == -2.27)&(dict_choices["redshift"] == 0.0)&(dict_choices["obs_filter"] == ls_filters[0])&(dict_choices["rf_filter"] == ls_filters[0])&(dr_file_button.value is None)&(dr_file_area.value is None)
+    original = (dict_choices["isochrone_model"] == "BASTI")&(dict_choices["age"] == 10.0)&(dict_choices["mh"] == -2.27)&(dict_choices["redshift"] == 0.0)&(dict_choices["obs_filter"] == ls_filters[0])&(dict_choices["rf_filter"] == ls_filters[0])&(len(dr_file_button.value) == 0)&(len(dr_file_area.value) == 0)
     mo.md('## Usage instructions: \n This webapp has two modes of use:\n \n ### For a **single K-correction**\n\n On the left-hand sidebar, select:\n\n 1. The isochrone model,\n\n 2. the age and metallicity of the SSP,\n\n 4. the redshift, \n\n 4. the observed and the rest-frame filters.\n\n An interactive table and a figure will pop out with the K-correction and an interpretation.\n \n ### For **multiple K-corrections**: \n\n Using the button/area on the left-hand sidebar, upload a table with columns indicating (in order): \n\n * the isochrone model, \n\n * the age and metallicity of the SSP,\n\n * its redshift, \n\n * as well as the observed and the rest-frame filters (an example is provided in the repository under example_table.txt). \n\n An interactive table will pop out with the K-corrections.') if original else None
     return
 
@@ -487,11 +541,6 @@ def _(Planck18, check_redshift_age_compatibility, cu, dict_choices, mo, u):
     max_age = Planck18.age(dict_choices["redshift"] * cu.redshift).to(u.Gyr) - 0.5 * u.Gyr
     mo.md("### ⚠️ Age and Redshift are incompatible in Planck18 cosmology:\n **The adopted age is not measurable at z={:.3f} in the Planck18 cosmology. The maximum allowed age at this redshift is {:.2f} (assuming 500 Myr for formation after the Big Bang). Please try again.**".format(dict_choices["redshift"], max_age)) if not compatible else None
     return (compatible,)
-
-
-@app.cell
-def _():
-    return
 
 
 @app.cell
@@ -515,7 +564,9 @@ def _(
     plot_luminosities,
     select_emiles_model,
     select_models_region,
+    sys,
     u,
+    urljoin,
 ):
     if compatible:
 
@@ -524,7 +575,11 @@ def _(
         rf_filter = load_filter_data(dict_choices["rf_filter"])
 
         # load the data
-        inpath = os.path.join(os.curdir, "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf))
+        if "pyodide" in sys.modules: # WebAssembly
+            inpath = urljoin(str(mo.notebook_location()), os.path.join("public", "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf)))
+    
+        else:
+            inpath = os.path.join(os.curdir, "public", "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf))
 
         # define the target SED
         #target_sed = numpy.asarray([dict_choices["mh"], dict_choices["age"]])
