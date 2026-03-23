@@ -13,8 +13,7 @@
 import marimo
 
 __generated_with = "0.21.1"
-app = marimo.App(width="full")
-
+app = marimo.App(title="RESCUER: K-corrections for SSPs", width="full")
 
 @app.cell
 def _(mo):
