@@ -49,7 +49,7 @@ def _():
         
         if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
             # Fetch the raw Python file from GitHub
-            raw_url = "https://raw.githubusercontent.com/mreina/git-rescuer/main/public/functions_Kcorrection.py"
+            raw_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/functions_Kcorrection.py"
             code = requests.get(raw_url).text
         else:  # Local testing, use local file
             code = requests.get(urljoin(str(base_url), "public/functions_Kcorrection.py")).text
