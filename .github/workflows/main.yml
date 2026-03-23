@@ -1,11 +1,23 @@
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
 jobs:
     build:
         runs-on: ubuntu-latest
 
         steps:
-            # ... checkout and install dependencies
+            - name: 📥 Checkout repository
+              uses: actions/checkout@v4
 
-            - name: 📄 Export notebook
+            - name: 🐍 Setup Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: '3.13'
+
+            - name:  Export notebook
               run: |
                   marimo export html-wasm script_marimo.py -o docs/index.html --mode run --sandbox
 
