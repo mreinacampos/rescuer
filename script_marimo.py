@@ -162,7 +162,12 @@ def _(
         # load the name of all the files
         ### load the available filters
         if "pyodide" in sys.modules: # WebAssembly
-            filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
+            if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
+                # Fetch the raw Python file from GitHub
+                filter_list_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/filter_list.txt"
+            else:  # Local testing, use local file
+                filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
+
             text = requests.get(filter_list_url).text
             filter_files = [line.strip() for line in text.splitlines() if line.strip()]
             ls_files_filters = [urljoin(str(base_url), f"public/Filters/{name}") for name in filter_files]
@@ -367,7 +372,12 @@ def _(base_url, glob, mo, numpy, os, requests, sys, urljoin):
     }
     ### load the available filters
     if "pyodide" in sys.modules: # WebAssembly
-        filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
+        if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
+            # Fetch the raw Python file from GitHub
+            filter_list_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/filter_list.txt"
+        else:  # Local testing, use local file
+            filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
+
         text = requests.get(filter_list_url).text
         filter_files = [line.strip() for line in text.splitlines() if line.strip()]
         _ls_filters = [urljoin(str(base_url), f"public/{name}") for name in filter_files]
@@ -579,8 +589,12 @@ def _(
 
         # load the data
         if "pyodide" in sys.modules: # WebAssembly
-            inpath = urljoin(str(mo.notebook_location()), os.path.join("public", "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf)))
-    
+            if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
+                # Fetch the raw Python file from GitHub
+                _url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/"
+            else:  # Local testing, use local file
+                _url = str(mo.notebook_location())
+            inpath = urljoin(_url, os.path.join("public", "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf)))
         else:
             inpath = os.path.join(os.curdir, "public", "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf))
 
