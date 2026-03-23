@@ -41,18 +41,21 @@ def _():
     import astropy.cosmology.units as cu
     from scipy.interpolate import interp1d
 
-    #base_url = mo.notebook_location()
-    #csv_url = urljoin(base_url, "../public/example_table.csv")  # adjust relative path
-    #df = pd.read_csv(csv_url)
-
     from urllib.parse import urljoin
     import requests
 
-    if "pyodide" in sys.modules: # WebAssembly
+    if "pyodide" in sys.modules: # WebAssembly -- locally
         base_url = mo.notebook_location()
-        code = requests.get(urljoin(str(base_url), "public/functions_Kcorrection.py")).text
+        
+        if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
+            # Fetch the raw Python file from GitHub
+            raw_url = "https://raw.githubusercontent.com/mreina/git-rescuer/main/public/functions_Kcorrection.py"
+            code = requests.get(raw_url).text
+        else:  # Local testing, use local file
+            code = requests.get(urljoin(str(base_url), "public/functions_Kcorrection.py")).text
+        
         exec(code, globals())
-    else: # locally
+    else: # locally in VS Code
         sys.path.append(os.path.join(".", "public"))
         from functions_Kcorrection import func_kcorrection_lambda
 
