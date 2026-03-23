@@ -595,7 +595,7 @@ def _(
         if "pyodide" in sys.modules: # WebAssembly
             if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
                 # Fetch the raw Python file from GitHub
-                _url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/"
+                _url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/"
             else:  # Local testing, use local file
                 _url = str(mo.notebook_location())
             inpath = urljoin(_url, os.path.join("public", "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf)))
