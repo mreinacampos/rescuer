@@ -13,7 +13,8 @@
 import marimo
 
 __generated_with = "0.21.1"
-app = marimo.App(title="RESCUER: K-corrections for SSPs", width="full")
+app = marimo.App(width="full", app_title="RESCUER: K-corrections for SSPs")
+
 
 @app.cell
 def _(mo):
@@ -43,16 +44,17 @@ def _():
     from urllib.parse import urljoin
     import requests
 
+    base_url = mo.notebook_location()
+
     if "pyodide" in sys.modules: # WebAssembly -- locally
-        base_url = mo.notebook_location()
-        
+
         if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
             # Fetch the raw Python file from GitHub
             raw_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/functions_Kcorrection.py"
             code = requests.get(raw_url).text
         else:  # Local testing, use local file
             code = requests.get(urljoin(str(base_url), "public/functions_Kcorrection.py")).text
-        
+
         exec(code, globals())
     else: # locally in VS Code
         sys.path.append(os.path.join(".", "public"))
@@ -92,6 +94,7 @@ def _(
     constants,
     fits,
     glob,
+    io,
     mo,
     numpy,
     os,
@@ -163,20 +166,20 @@ def _(
         if "pyodide" in sys.modules: # WebAssembly
             if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
                 # Fetch the raw Python file from GitHub
-                filter_list_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/filter_list.txt"
+                _filter_list_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/filter_list.txt"
                 _base_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/"
             else:  # Local testing, use local file
-                filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
+                _filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
                 _base_url = mo.notebook_location()
-                
-            text = requests.get(filter_list_url).text
-            filter_files = [line.strip() for line in text.splitlines() if line.strip()]
-            ls_files_filters = [urljoin(str(_base_url), f"public/Filters/{name}") for name in filter_files]
+
+            _text = requests.get(_filter_list_url).text
+            _filter_files = [line.strip() for line in _text.splitlines() if line.strip()]
+            ls_files_filters = [urljoin(str(_base_url), f"public/Filters/{name}") for name in _filter_files]
 
         else:
             ls_files_filters = glob.glob(os.path.join(".", "public", "Filters", "*.dat"))
             ls_files_filters.sort()
-    
+
         # output the data in a dictionary
         data_filter = {}
         # keep only the FXYZW
@@ -211,9 +214,9 @@ def _(
     # function to check that the selected age and redshift are compatibles
     def check_redshift_age_compatibility(age, z):
         # at what redshift they would be the oldest SSPs? - assumption: 500Myr post-BigBang for formation
-        age += 0.5 # assumption: SSPs take at least 500Myr to start forming from the Big Bang
-        z_oldest = z_at_value(Planck18.age, age * u.Gyr) 
-        if z > z_oldest: return False
+        # assumption: SSPs take at least 500Myr to start forming from the Big Bang
+        z_oldest = z_at_value(Planck18.age, (age + 0.5) * u.Gyr) 
+        if numpy.sum(z > z_oldest): return False
         else: return True
 
     def define_edges_region(dict_choices, dict_options):
@@ -375,15 +378,15 @@ def _(base_url, glob, mo, numpy, os, requests, sys, urljoin):
     if "pyodide" in sys.modules: # WebAssembly
         if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
             # Fetch the raw Python file from GitHub
-            filter_list_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/filter_list.txt"
+            _filter_list_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/public/filter_list.txt"
             _base_url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/"
         else:  # Local testing, use local file
-            filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
+            _filter_list_url = urljoin(str(mo.notebook_location()), "public/filter_list.txt")
             _base_url = mo.notebook_location()
-            
-        text = requests.get(filter_list_url).text
-        filter_files = [line.strip() for line in text.splitlines() if line.strip()]
-        _ls_filters = [urljoin(str(_base_url), f"public/{name}") for name in filter_files]
+
+        _text = requests.get(_filter_list_url).text
+        _filter_files = [line.strip() for line in _text.splitlines() if line.strip()]
+        _ls_filters = [urljoin(str(_base_url), f"public/{name}") for name in _filter_files]
 
     else:
         _ls_filters = glob.glob(os.path.join(".", "public", "Filters", "*.dat"))
@@ -461,29 +464,8 @@ def _(
 
 
 @app.cell
-def _(
-    dr_add_uncertainties,
-    dr_age,
-    dr_isochrone,
-    dr_mh,
-    dr_obs_filter,
-    dr_redshift,
-    dr_rf_filter,
-    dr_sigma_age,
-    dr_sigma_mh,
-):
-    dict_choices = {}
-    dict_choices["isochrone_model"] = dr_isochrone.value
-    dict_choices["age"] = float(dr_age.value)
-    dict_choices["mh"] = float(dr_mh.value)
-    dict_choices["redshift"] = float(dr_redshift.value)
-    dict_choices["obs_filter"] = dr_obs_filter.value
-    dict_choices["rf_filter"] = dr_rf_filter.value
-    dict_choices["add_uncertainties"] = dr_add_uncertainties.value
-    if dict_choices["add_uncertainties"]:
-        dict_choices["sigma_age"] = float(dr_sigma_age.value)
-        dict_choices["sigma_mh"] = float(dr_sigma_mh.value)
-    return (dict_choices,)
+def _():
+    return
 
 
 @app.cell
@@ -537,6 +519,34 @@ def _(dr_file_area, dr_file_button, io, pandas, pd):
 
 
 @app.cell
+def _(
+    dr_add_uncertainties,
+    dr_age,
+    dr_isochrone,
+    dr_mh,
+    dr_obs_filter,
+    dr_redshift,
+    dr_rf_filter,
+    dr_sigma_age,
+    dr_sigma_mh,
+):
+    #if mode == "single":
+    dict_choices = {}
+    dict_choices["isochrone_model"] = dr_isochrone.value
+    dict_choices["age"] = float(dr_age.value)
+    dict_choices["mh"] = float(dr_mh.value)
+    dict_choices["redshift"] = float(dr_redshift.value)
+    dict_choices["obs_filter"] = dr_obs_filter.value
+    dict_choices["rf_filter"] = dr_rf_filter.value
+    dict_choices["add_uncertainties"] = dr_add_uncertainties.value
+    if dict_choices["add_uncertainties"]:
+        dict_choices["sigma_age"] = float(dr_sigma_age.value)
+        dict_choices["sigma_mh"] = float(dr_sigma_mh.value)
+    # else: the dict_choices will be initialised row by row below
+    return (dict_choices,)
+
+
+@app.cell
 def _(dict_choices, dr_file_area, dr_file_button, ls_filters, mo):
     # is the app in its original state? Check if the dropdowns are still in their default value
     original = (dict_choices["isochrone_model"] == "BASTI")&(dict_choices["age"] == 10.0)&(dict_choices["mh"] == -2.27)&(dict_choices["redshift"] == 0.0)&(dict_choices["obs_filter"] == ls_filters[0])&(dict_choices["rf_filter"] == ls_filters[0])&(len(dr_file_button.value) == 0)&(len(dr_file_area.value) == 0)
@@ -551,16 +561,36 @@ def _(mo, mode, uploaded_df):
 
 
 @app.cell
-def _(Planck18, check_redshift_age_compatibility, cu, dict_choices, mo, u):
+def _():
+    return
+
+
+@app.cell
+def _(
+    Planck18,
+    check_redshift_age_compatibility,
+    cu,
+    dict_choices,
+    mo,
+    mode,
+    u,
+    uploaded_df,
+):
     # check that the age is compatible with the age of the Universe
-    compatible = check_redshift_age_compatibility(float(dict_choices["age"]), dict_choices["redshift"])
+
+    if mode == "single":
+        compatible = check_redshift_age_compatibility(float(dict_choices["age"]), dict_choices["redshift"])
+    else:
+        compatible = check_redshift_age_compatibility(uploaded_df["Age [Gyr]"].values, uploaded_df["Redshift"].values)
+
     max_age = Planck18.age(dict_choices["redshift"] * cu.redshift).to(u.Gyr) - 0.5 * u.Gyr
-    mo.md("### ⚠️ Age and Redshift are incompatible in Planck18 cosmology:\n **The adopted age is not measurable at z={:.3f} in the Planck18 cosmology. The maximum allowed age at this redshift is {:.2f} (assuming 500 Myr for formation after the Big Bang). Please try again.**".format(dict_choices["redshift"], max_age)) if not compatible else None
+    mo.md("### ⚠️ The age(s) and redshift(s) are incompatible in Planck18 cosmology:\n **The adopted age is not measurable at z={:.3f} in the Planck18 cosmology. The maximum allowed age at this redshift is {:.2f} (assuming 500 Myr for formation after the Big Bang). Please try again.**".format(dict_choices["redshift"], max_age)) if not compatible else None
     return (compatible,)
 
 
 @app.cell
 def _(
+    base_url,
     compatible,
     constants,
     define_edges_region,
@@ -571,6 +601,7 @@ def _(
     interp1d,
     load_filter_data,
     mo,
+    mode,
     name_imf,
     name_slope,
     numpy,
@@ -582,27 +613,27 @@ def _(
     select_models_region,
     sys,
     u,
+    uploaded_df,
     urljoin,
 ):
-    if compatible:
-
-        # load the filter data
+    def load_filters(dict_choices):
         obs_filter = load_filter_data(dict_choices["obs_filter"])
         rf_filter = load_filter_data(dict_choices["rf_filter"])
+        return obs_filter, rf_filter
 
-        # load the data
+    def get_sed_inpath(dict_choices, name_imf, base_url):
         if "pyodide" in sys.modules: # WebAssembly
             if "github.io" in str(base_url):  # Only when deployed on GitHub Pages
                 # Fetch the raw Python file from GitHub
                 _url = "https://raw.githubusercontent.com/mreinacampos/rescuer/main/docs/"
             else:  # Local testing, use local file
                 _url = str(mo.notebook_location())
-            inpath = urljoin(_url, os.path.join("public", "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf)))
+            _inpath = urljoin(_url, os.path.join("public", "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf)))
         else:
-            inpath = os.path.join(os.curdir, "public", "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf))
+            _inpath = os.path.join(os.curdir, "public", "SEDs_E-MILES", "EMILES_{:s}_BASE_{:s}_FITS".format(dict_choices["isochrone_model"], name_imf))
+        return _inpath
 
-        # define the target SED
-        #target_sed = numpy.asarray([dict_choices["mh"], dict_choices["age"]])
+    def load_emiles_seds(dict_choices, name_slope, dict_options, _inpath):
         emiles_sed = {}
         # load the target SED
         name_mh = "Z{:.2f}".format(dict_choices["mh"])    
@@ -612,7 +643,7 @@ def _(
                                                mh = dict_choices["mh"],
                                         name_slope = name_slope, 
                                         name_label = dict_options[dict_choices["isochrone_model"]]["name_label"],
-                                        inpath = inpath)
+                                        inpath = _inpath)
         dict_choices["target_sed"] = _key
         # load the other models if needed 
         if dict_choices["add_uncertainties"]:
@@ -628,10 +659,12 @@ def _(
                         emiles_sed[_key] = select_emiles_model(age = age, mh = mh,
                                                     name_slope = name_slope, 
                                                     name_label = dict_options[dict_choices["isochrone_model"]]["name_label"],
-                                                    inpath = inpath)
+                                                    inpath = _inpath)
         dict_choices["list_seds"] = list(emiles_sed.keys())
+        return emiles_sed, dict_choices["target_sed"], dict_choices["list_seds"]
 
-        doing_blackbody = 0
+    def apply_blackbody_approximation(emiles_sed, dict_choices, obs_filter, rf_filter):
+        doing_blackbody = 0; warning = ""
         # if we're using the longest range filters, then overwrite the E-MILES SED and use a blackbody approximation
         if "F444W" in dict_choices["obs_filter"] or "F444W" in dict_choices["rf_filter"]:
             for _key in emiles_sed.keys():
@@ -654,11 +687,11 @@ def _(
                 # units: erg/s/sr/A
                 emiles_sed[_key]["lum_angstrom"] = 4*numpy.pi*numpy.power((10 * u.pc).to("cm"), 2)*blackbody_lambda
 
-            mo.md("**[WARNING]:** One of the selected filters exceeds the wavelength range covered by the E-MILES SEDs. The code is mimicking the chosen SED with a blackbody approximation of $T={:.1f}$ so it peaks at the same wavelength.".format(doing_blackbody))
+            warning = "**[WARNING]:** One of the selected filters exceeds the wavelength range covered by the E-MILES SEDs. The code is mimicking the chosen SED with a blackbody approximation of $T={:.1f}$ so it peaks at the same wavelength.".format(doing_blackbody)
+        return emiles_sed, warning, doing_blackbody
 
-        # define the standard source - AB magnitudes
-        stdsource = define_standard_source(emiles_sed[dict_choices["target_sed"]])
-        target_kcorr = 0; ls_kcorr = []
+    def compute_kcorrections(emiles_sed, dict_choices, stdsource, obs_filter, rf_filter):
+        target_kcorr = 0; _ls_kcorr = []
         for _key in emiles_sed.keys():
             # calculate the K-correction
             kcorr = func_kcorrection_lambda(emiles_sed[_key]["lambda"],
@@ -667,16 +700,18 @@ def _(
                                             stdsource["flux_angstrom"], 
                                             obs_filter['lambda'], obs_filter['curve'],
                                             rf_filter['lambda'], rf_filter['curve'], dict_choices["redshift"])
-            ls_kcorr.append(kcorr)
+            _ls_kcorr.append(kcorr)
             if _key == dict_choices["target_sed"]:
                 target_kcorr = kcorr
 
             if dict_choices["add_uncertainties"]:
                 # calculate the uncertainties as the distances to the 10th-90th percentiles
-                per10th = numpy.min([numpy.percentile(ls_kcorr, 10), target_kcorr])
-                per90th = numpy.max([numpy.percentile(ls_kcorr, 90), target_kcorr])
+                per10th = numpy.min([numpy.percentile(_ls_kcorr, 10), target_kcorr])
+                per90th = numpy.max([numpy.percentile(_ls_kcorr, 90), target_kcorr])
                 dict_choices["sigma_kcorr"] = [per10th, per90th]
+        return target_kcorr, _ls_kcorr, dict_choices
 
+    def generate_table(target_kcorr, dict_choices):
         if numpy.isnan(target_kcorr) or numpy.isinf(target_kcorr):
             explanation = "This SED and filter combination is misbehaving; check coverage."
         elif target_kcorr < 0:
@@ -698,24 +733,79 @@ def _(
             dict_table["90th percentile"] = numpy.round(dict_choices["sigma_kcorr"][-1], 5)
 
         df = pandas.DataFrame(dict_table, index = [0])
+        return df, explanation
 
+    def compute_single_kcorrection(dict_choices, name_imf, name_slope, dict_options, base_url):
 
-        _max_lum, _yy_max, _fig = plot_luminosities(dict_choices["age"],
-                                dict_choices["mh"],
-                                emiles_sed, 
-                                z = dict_choices["redshift"],
-                                obs_filter = obs_filter, 
-                                rf_filter = rf_filter,
-                                target_sed = dict_choices["target_sed"],
-                                doing_bb = doing_blackbody)
+        # Load filters
+        obs_filter, rf_filter = load_filters(dict_choices)
+
+        # Get SED input path
+        _inpath = get_sed_inpath(dict_choices, name_imf, base_url)
+
+        # Load E-MILES SEDs
+        emiles_sed, dict_choices["target_sed"], dict_choices["list_seds"] = load_emiles_seds(dict_choices, name_slope, dict_options, _inpath)
+
+        # Apply blackbody approximation if needed
+        emiles_sed, warning, doing_blackbody = apply_blackbody_approximation(emiles_sed, dict_choices, obs_filter, rf_filter)
+
+        # Define standard source
+        stdsource = define_standard_source(emiles_sed[dict_choices["target_sed"]])
+
+        # Compute K-corrections
+        target_kcorr, _ls_kcorr, dict_choices = compute_kcorrections(emiles_sed, dict_choices, stdsource, obs_filter, rf_filter)
+
+        # Generate table and explanation
+        df, explanation = generate_table(target_kcorr, dict_choices)
+
+        _fig = None; _max_lum = None; _yy_max = None
+        explanation = ""; explanation_img = ""; explanation_img2 = ""; warning = "" # no explanations or images for the multiple case
+        if  mode == "single":   
+            # Plot luminosities
+            _max_lum, _yy_max, _fig = plot_luminosities(dict_choices["age"],
+                                    dict_choices["mh"],
+                                    emiles_sed, 
+                                    z = dict_choices["redshift"],
+                                    obs_filter = obs_filter, 
+                                    rf_filter = rf_filter,
+                                    target_sed = dict_choices["target_sed"],
+                                    doing_bb = doing_blackbody)
+
+            explanation_img = "**[Image]:** Expected behaviour of the K-correction on the SED of a SSP of {:.2f} Gyr and [M/H] = {:.2f} observed at z = {:.2f}: (top) Intrinsic luminosity of the SSP from E-MILES (black) and its redshifted curve (grey) as a function of wavelength, and (bottom) behaviour of the K-correction. The vertical shaded areas indicate the wavelength range covered by each filter. The correction given by the K value is indicated by the red arrow.".format(dict_choices["age"], dict_choices["mh"], dict_choices["redshift"])
+            explanation_img2 = "The SEDs are shown in units of {:.0e} on the left-hand panel, and in units of {:.0e} on the right-hand panel.".format(_max_lum, _yy_max)
+
+        return df, explanation, _fig, explanation_img, explanation_img2, warning
+
+    if compatible:
+
+        if mode == "single":
+            df, explanation, _fig, explanation_img, explanation_img2, warning = compute_single_kcorrection(dict_choices, name_imf, name_slope, dict_options, base_url)
+
+        if mode == "multiple":
+            dfs = []  # List to collect all dataframes
+            for index, row in uploaded_df.iterrows(): # iterate over the table
+                dict_choices["isochrone_model"] = row["Isochrone model"]
+                dict_choices["age"] = row["Age [Gyr]"]
+
+                dict_choices["mh"] = row["Metallicity"]
+                dict_choices["redshift"] = row["Redshift"]
+
+                dict_choices["obs_filter"] = row["Observed filter"]
+                dict_choices["obs_filter"] = row["Rest-frame filter"]
+
+                df_single, explanation, _fig, explanation_img, explanation_img2, warning = compute_single_kcorrection(dict_choices, name_imf, name_slope, dict_options, base_url)
+                dfs.append(df_single)  # Append each df to the list
+            
+            df = pandas.concat(dfs, ignore_index=True)  # Concatenate all dataframes
 
     mo.vstack([
+        mo.md(warning),
         mo.md("**[Table]** Summary of selected inputs and K-correction result"),
         mo.ui.table(df),
         mo.md(f"**[Interpretation]** {explanation}"),
-        mo.md("**[Image]:** Expected behaviour of the K-correction on the SED of a SSP of {:.2f} Gyr and [M/H] = {:.2f} observed at z = {:.2f}: (top) Intrinsic luminosity of the SSP from E-MILES (black) and its redshifted curve (grey) as a function of wavelength, and (bottom) behaviour of the K-correction. The vertical shaded areas indicate the wavelength range covered by each filter. The correction given by the K value is indicated by the red arrow.".format(dict_choices["age"], dict_choices["mh"], dict_choices["redshift"])),
+        mo.md(explanation_img),
         _fig,
-        mo.md("The SEDs are shown in units of {:.0e} on the left-hand panel, and in units of {:.0e} on the right-hand panel.".format(_max_lum, _yy_max))])
+        mo.md(explanation_img2)])
     return
 
 
