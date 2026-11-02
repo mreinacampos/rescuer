@@ -401,7 +401,7 @@ def _(base_url, glob, mo, numpy, os, requests, sys, urljoin):
 def _(mo):
     ### SIDEBAR
     # place the selectboxes on the sidebar
-    dr_isochrone = mo.ui.dropdown(options=["BASTI", "PADOVA00"], value="PADOVA00", label="Isochrone Model")
+    dr_isochrone = mo.ui.dropdown(options=["BASTI", "PADOVA00"], value="BASTI", label="Isochrone Model")
     return (dr_isochrone,)
 
 
