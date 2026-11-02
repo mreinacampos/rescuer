@@ -6,13 +6,14 @@
 #     "matplotlib==3.10.8",
 #     "numpy==2.4.3",
 #     "pandas==3.0.1",
+#     "requests==2.34.2",
 #     "scipy==1.17.1",
 # ]
 # ///
 
 import marimo
 
-__generated_with = "0.21.1"
+__generated_with = "0.23.6"
 app = marimo.App(width="full", app_title="RESCUER: K-corrections for SSPs")
 
 
@@ -400,14 +401,23 @@ def _(base_url, glob, mo, numpy, os, requests, sys, urljoin):
 def _(mo):
     ### SIDEBAR
     # place the selectboxes on the sidebar
-    dr_isochrone = mo.ui.dropdown(options=["BASTI", "PADOVA00"], value="BASTI", label="Isochrone Model")
+    dr_isochrone = mo.ui.dropdown(options=["BASTI", "PADOVA00"], value="PADOVA00", label="Isochrone Model")
     return (dr_isochrone,)
 
 
 @app.cell
+def _():
+    return
+
+
+@app.cell
 def _(dict_options, dr_isochrone, ls_filters, mo):
-    dr_age = mo.ui.dropdown(options=[str(a) for a in dict_options[dr_isochrone.value]["ls_models_ages"]], value="10.0", label="Age [Gyr]")
-    dr_mh = mo.ui.dropdown(options=[str(m) for m in dict_options[dr_isochrone.value]["ls_models_mh"]], value="-2.27", label="Metallicity [M/H]")
+    dr_age = {}; dr_mh = {}
+    for _key in dr_isochrone.options.keys():
+        if "BASTI" in _key: default_mh = "-2.27"
+        elif "PADOVA" in _key: default_mh = "-2.32"
+        dr_age[_key] = mo.ui.dropdown(options=[str(a) for a in dict_options[_key]["ls_models_ages"]], value="10.0", label="Age [Gyr]")
+        dr_mh[_key] = mo.ui.dropdown(options=[str(m) for m in dict_options[_key]["ls_models_mh"]], value=default_mh, label="Metallicity [M/H]")
     dr_redshift = mo.ui.number(value=0.0, start=0.0, stop=1.0, step=0.01, label="Redshift [z]")
     dr_obs_filter = mo.ui.dropdown(options=ls_filters, label="Observed Filter", value = ls_filters[0])
     dr_rf_filter = mo.ui.dropdown(options=ls_filters, label="Rest-frame Filter", value = ls_filters[0])
@@ -455,7 +465,7 @@ def _(
             item=mo.vstack([mo.md("## Configuration"),
                             mo.md("---"),
                             mo.md("### For single K-corrections:"),
-                            dr_isochrone, dr_age, dr_mh, dr_redshift,
+                            dr_isochrone, dr_age[dr_isochrone.value], dr_mh[dr_isochrone.value], dr_redshift,
                             dr_obs_filter, dr_rf_filter, 
                             dr_add_uncertainties, dr_sigma_age, dr_sigma_mh,
                             mo.md("---"),
@@ -533,8 +543,8 @@ def _(
     #if mode == "single":
     dict_choices = {}
     dict_choices["isochrone_model"] = dr_isochrone.value
-    dict_choices["age"] = float(dr_age.value)
-    dict_choices["mh"] = float(dr_mh.value)
+    dict_choices["age"] = float(dr_age[dr_isochrone.value].value)
+    dict_choices["mh"] = float(dr_mh[dr_isochrone.value].value)
     dict_choices["redshift"] = float(dr_redshift.value)
     dict_choices["obs_filter"] = dr_obs_filter.value
     dict_choices["rf_filter"] = dr_rf_filter.value
@@ -795,7 +805,7 @@ def _(
 
                 df_single, explanation, _fig, explanation_img, explanation_img2, warning = compute_single_kcorrection(dict_choices, name_imf, name_slope, dict_options, base_url)
                 dfs.append(df_single)  # Append each df to the list
-            
+
             df = pandas.concat(dfs, ignore_index=True)  # Concatenate all dataframes
 
     mo.vstack([
